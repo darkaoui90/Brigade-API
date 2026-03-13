@@ -8,6 +8,6 @@ Route::get('/', function () {
 
 Route::get('/test', function () {
     return response()->json([
-        "message" => "API is working"
+        "message" => "API is finished working"
     ]);
 });
