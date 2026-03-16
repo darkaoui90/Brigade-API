@@ -13,7 +13,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:6'
+            'password' => 'required|string|min:8'
         ]);
 
         $user = User::create([
@@ -27,7 +27,7 @@ class AuthController extends Controller
         return response()->json([
             'user' => $user,
             'token' => $token
-        ]);
+        ], 201);
     }
 
     public function login(Request $request)
@@ -37,11 +37,11 @@ class AuthController extends Controller
             [
 
                 'email' => 'required|email',
-                'password' => 'required'
+                'password' => 'required|string'
             ]
         );
 
-        $user = user::where('email', $credentials['email'])->first();
+        $user = User::where('email', $credentials['email'])->first();
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return response()->json([
@@ -54,6 +54,21 @@ class AuthController extends Controller
         'user' => $user,
         'token' => $token
     ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+
+        $token = $user?->currentAccessToken();
+
+        if ($token) {
+            $token->delete();
+        }
+
+        return response()->json([
+            'message' => 'Logged out successfully',
+        ]);
     }
   
 }

@@ -1,0 +1,392 @@
+openapi: 3.0.3
+info:
+  title: Brigade API
+  version: 1.0.0
+  description: API sécurisée (Laravel Sanctum) pour gérer catégories et plats.
+servers:
+  - url: http://localhost:8000
+    description: Local
+tags:
+  - name: Auth
+  - name: Categories
+  - name: Plats
+paths:
+  /api/register:
+    post:
+      tags: [Auth]
+      summary: Inscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        "201":
+          description: Utilisateur créé + token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: Connexion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+  /api/logout:
+    post:
+      tags: [Auth]
+      summary: Déconnexion (révoque le token courant)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "401":
+          description: Unauthenticated
+  /api/user:
+    get:
+      tags: [Auth]
+      summary: Infos utilisateur authentifié
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401":
+          description: Unauthenticated
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: Lister catégories (du user)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
+        "401":
+          description: Unauthenticated
+    post:
+      tags: [Categories]
+      summary: Créer une catégorie
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Créée
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "401":
+          description: Unauthenticated
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+  /api/categories/{category}:
+    parameters:
+      - in: path
+        name: category
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Categories]
+      summary: Afficher une catégorie
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+    put:
+      tags: [Categories]
+      summary: Modifier une catégorie
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+    delete:
+      tags: [Categories]
+      summary: Supprimer une catégorie
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+  /api/categories/{category}/plats:
+    parameters:
+      - in: path
+        name: category
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [Categories]
+      summary: Associer des plats à une catégorie (met à jour category_id)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plat_ids]
+              properties:
+                plat_ids:
+                  type: array
+                  minItems: 1
+                  items: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+  /api/plats:
+    get:
+      tags: [Plats]
+      summary: Lister plats (du user)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plat" }
+        "401": { description: Unauthenticated }
+    post:
+      tags: [Plats]
+      summary: Créer un plat
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, price, category_id]
+              properties:
+                name: { type: string }
+                description: { type: string, nullable: true }
+                price: { type: number, minimum: 0 }
+                category_id: { type: integer }
+      responses:
+        "201":
+          description: Créé
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plat" }
+        "401": { description: Unauthenticated }
+        "422":
+          description: Validation error (ex: category_id n'appartient pas au user)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+  /api/plats/{plat}:
+    parameters:
+      - in: path
+        name: plat
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Plats]
+      summary: Afficher un plat
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plat" }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+    put:
+      tags: [Plats]
+      summary: Modifier un plat
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, price]
+              properties:
+                name: { type: string }
+                description: { type: string, nullable: true }
+                price: { type: number, minimum: 0 }
+                category_id: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plat" }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+    delete:
+      tags: [Plats]
+      summary: Supprimer un plat
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "401": { description: Unauthenticated }
+        "403": { description: Forbidden (policy) }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        user_id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Plat:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        price: { type: number }
+        category_id: { type: integer }
+        user_id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        token: { type: string }
+    ValidationError:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
