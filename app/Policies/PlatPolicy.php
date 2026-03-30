@@ -14,22 +14,21 @@ class PlatPolicy
 
     public function view(User $user, Plat $plat): bool
     {
-        return $plat->user_id === $user->id;
+        return $plat->is_available || $user->is_admin;
     }
 
     public function create(User $user): bool
     {
-        return true;
+        return (bool) $user->is_admin;
     }
 
     public function update(User $user, Plat $plat): bool
     {
-        return $plat->user_id === $user->id;
+        return (bool) $user->is_admin;
     }
 
     public function delete(User $user, Plat $plat): bool
     {
-        return $plat->user_id === $user->id;
+        return (bool) $user->is_admin;
     }
 }
-

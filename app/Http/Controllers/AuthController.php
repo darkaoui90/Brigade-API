@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -13,13 +14,23 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8'
+            'password' => 'required|string|min:8',
+            'dietary_tags' => ['sometimes', 'array'],
+            'dietary_tags.*' => [
+                'string',
+                'distinct',
+                Rule::in(['vegan', 'no_sugar', 'no_cholesterol', 'gluten_free', 'no_lactose']),
+            ],
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password'])
+        ]);
+
+        $user->profile()->create([
+            'dietary_tags' => array_values($validated['dietary_tags'] ?? []),
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -69,6 +80,11 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Logged out successfully',
         ]);
+    }
+
+    public function me(Request $request)
+    {
+        return response()->json($request->user());
     }
   
 }

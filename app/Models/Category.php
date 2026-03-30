@@ -13,8 +13,18 @@ class Category extends Model
 
     protected $fillable = [
         'name',
+        'description',
+        'color',
+        'is_active',
         'user_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -24,5 +34,10 @@ class Category extends Model
     public function plats(): HasMany
     {
         return $this->hasMany(Plat::class);
+    }
+
+    public function plates(): HasMany
+    {
+        return $this->hasMany(Plate::class, 'category_id');
     }
 }

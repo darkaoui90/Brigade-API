@@ -14,22 +14,21 @@ class CategoryPolicy
 
     public function view(User $user, Category $category): bool
     {
-        return $category->user_id === $user->id;
+        return $category->is_active || $user->is_admin;
     }
 
     public function create(User $user): bool
     {
-        return true;
+        return (bool) $user->is_admin;
     }
 
     public function update(User $user, Category $category): bool
     {
-        return $category->user_id === $user->id;
+        return (bool) $user->is_admin;
     }
 
     public function delete(User $user, Category $category): bool
     {
-        return $category->user_id === $user->id;
+        return (bool) $user->is_admin;
     }
 }
-

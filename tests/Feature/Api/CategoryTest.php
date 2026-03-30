@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
@@ -12,61 +13,60 @@ class CategoryTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_crud_categories(): void
+    public function test_authenticated_user_can_list_categories_but_cannot_create(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['is_admin' => false]);
         $token = $user->createToken('api-token')->plainTextToken;
         $headers = ['Authorization' => "Bearer {$token}"];
 
-        $create = $this->postJson('/api/categories', ['name' => 'Entrées'], $headers);
-        $create->assertStatus(201)->assertJsonFragment(['name' => 'Entrées']);
+        $this->getJson('/api/categories', $headers)->assertOk();
 
+        $this->postJson('/api/categories', ['name' => 'Entrées'], $headers)->assertStatus(403);
+    }
+
+    public function test_admin_can_crud_categories(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $token = $admin->createToken('api-token')->plainTextToken;
+        $headers = ['Authorization' => "Bearer {$token}"];
+
+        $create = $this->postJson('/api/categories', [
+            'name' => 'Desserts',
+            'description' => 'Sweet finishes',
+            'color' => '#FB7185',
+            'is_active' => true,
+        ], $headers);
+
+        $create->assertStatus(201)->assertJsonFragment(['name' => 'Desserts']);
         $categoryId = $create->json('id');
 
-        $this->getJson('/api/categories', $headers)
-            ->assertOk()
-            ->assertJsonFragment(['id' => $categoryId]);
+        $this->putJson("/api/categories/{$categoryId}", [
+            'name' => 'Desserts Updated',
+            'color' => '#F97316',
+            'is_active' => true,
+        ], $headers)->assertOk()->assertJsonFragment(['name' => 'Desserts Updated']);
 
-        $this->getJson("/api/categories/{$categoryId}", $headers)
-            ->assertOk()
-            ->assertJsonFragment(['id' => $categoryId]);
-
-        $this->putJson("/api/categories/{$categoryId}", ['name' => 'Desserts'], $headers)
-            ->assertOk()
-            ->assertJsonFragment(['name' => 'Desserts']);
-
-        $this->deleteJson("/api/categories/{$categoryId}", [], $headers)
-            ->assertOk();
-
+        $this->deleteJson("/api/categories/{$categoryId}", [], $headers)->assertOk();
         $this->assertDatabaseMissing('categories', ['id' => $categoryId]);
     }
 
-    public function test_category_name_is_unique_per_user_only(): void
+    public function test_non_admin_can_view_active_category(): void
     {
-        $userA = User::factory()->create();
-        $tokenA = $userA->createToken('api-token')->plainTextToken;
-        $headersA = ['Authorization' => "Bearer {$tokenA}"];
+        $admin = User::factory()->admin()->create();
+        $category = Category::create([
+            'name' => 'Entrées',
+            'description' => null,
+            'color' => '#60A5FA',
+            'is_active' => true,
+            'user_id' => $admin->id,
+        ]);
 
-        $this->postJson('/api/categories', ['name' => 'Boissons'], $headersA)->assertStatus(201);
-        $this->postJson('/api/categories', ['name' => 'Boissons'], $headersA)->assertStatus(422);
-
-        $userB = User::factory()->create();
-        $tokenB = $userB->createToken('api-token')->plainTextToken;
-        $headersB = ['Authorization' => "Bearer {$tokenB}"];
-
-        $this->postJson('/api/categories', ['name' => 'Boissons'], $headersB)->assertStatus(201);
-    }
-
-    public function test_user_cannot_access_other_users_category(): void
-    {
-        $owner = User::factory()->create();
-        $other = User::factory()->create();
-
-        $category = $owner->categories()->create(['name' => 'Owner Category']);
-
-        $token = $other->createToken('api-token')->plainTextToken;
+        $user = User::factory()->create(['is_admin' => false]);
+        $token = $user->createToken('api-token')->plainTextToken;
         $headers = ['Authorization' => "Bearer {$token}"];
 
-        $this->getJson("/api/categories/{$category->id}", $headers)->assertStatus(403);
+        $this->getJson("/api/categories/{$category->id}", $headers)
+            ->assertOk()
+            ->assertJsonFragment(['id' => $category->id]);
     }
 }

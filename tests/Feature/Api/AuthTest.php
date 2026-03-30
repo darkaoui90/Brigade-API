@@ -19,6 +19,7 @@ class AuthTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password123',
+            'dietary_tags' => ['vegan', 'gluten_free'],
         ]);
 
         $response
@@ -29,6 +30,7 @@ class AuthTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
+        $this->assertDatabaseHas('profiles', ['user_id' => $response->json('user.id')]);
     }
 
     public function test_login_returns_user_and_token(): void

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\Plat;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -16,10 +15,13 @@ class CategoryController extends Controller
 
     public function index(Request $request)
     {
-        $categories = $request->user()
-            ->categories()
-            ->orderBy('name')
-            ->get();
+        $categoriesQuery = Category::query()->orderBy('name');
+
+        if (!$request->user()->is_admin) {
+            $categoriesQuery->where('is_active', true);
+        }
+
+        $categories = $categoriesQuery->paginate((int) $request->query('per_page', 15));
 
         return response()->json($categories);
     }
@@ -30,12 +32,19 @@ class CategoryController extends Controller
             'name' => [
                 'required',
                 'string',
-                'max:255',
-                Rule::unique('categories', 'name')->where(fn ($query) => $query->where('user_id', $request->user()->id)),
+                'max:100',
+                Rule::unique('categories', 'name'),
             ],
+            'description' => ['nullable', 'string'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $category = $request->user()->categories()->create($validated);
+        $category = Category::create([
+            ...$validated,
+            'user_id' => $request->user()->id,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
 
         return response()->json($category, 201);
     }
@@ -51,11 +60,13 @@ class CategoryController extends Controller
             'name' => [
                 'required',
                 'string',
-                'max:255',
+                'max:100',
                 Rule::unique('categories', 'name')
                     ->ignore($category->id)
-                    ->where(fn ($query) => $query->where('user_id', $request->user()->id)),
             ],
+            'description' => ['nullable', 'string'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
         $category->update($validated);
@@ -72,35 +83,19 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function attachPlats(Request $request, Category $category)
+    public function plates(Request $request, Category $category)
     {
-        $this->authorize('update', $category);
+        $this->authorize('view', $category);
 
-        $validated = $request->validate([
-            'plat_ids' => ['required', 'array', 'min:1'],
-            'plat_ids.*' => ['integer', 'distinct', 'exists:plats,id'],
-        ]);
+        $platesQuery = $category->plates()->with(['ingredients'])->orderBy('name');
 
-        $platIds = $validated['plat_ids'];
-
-        $plats = Plat::query()
-            ->whereIn('id', $platIds)
-            ->where('user_id', $request->user()->id)
-            ->get();
-
-        if ($plats->count() !== count($platIds)) {
-            return response()->json([
-                'message' => 'One or more plats do not belong to the authenticated user.',
-            ], 422);
+        if (!$request->user()->is_admin) {
+            $platesQuery->where('is_available', true);
         }
 
-        Plat::query()
-            ->whereIn('id', $platIds)
-            ->update(['category_id' => $category->id]);
+        $plates = $platesQuery->paginate((int) $request->query('per_page', 15));
 
-        return response()->json([
-            'message' => 'Plats attached successfully.',
-        ]);
+        return response()->json($plates);
     }
 
 }

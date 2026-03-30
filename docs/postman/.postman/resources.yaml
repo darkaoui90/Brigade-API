@@ -1,0 +1,11 @@
+# Use this workspace to collaborate
+workspace:
+  id: 419d9ea0-f7d2-43c5-8857-0a4e0cc52afa
+
+localResources:
+  collections:
+    - ..\brigade_api.postman_collection.json
+    - ..\restaurantai_brigade.postman_collection.json
+  environments:
+    - ..\brigade_api.postman_environment.json
+    - ..\restaurantai_brigade.postman_environment.json

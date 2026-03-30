@@ -13,7 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
 )
     ->withMiddleware(function (Middleware $middleware) {
         // Avoid redirecting API clients to a non-existent named "login" route.
-        $middleware->redirectGuestsTo('/');
+        $middleware->redirectGuestsTo('/app');
+
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Ensure API routes always return JSON (helps Postman/curl when Accept header is missing).
